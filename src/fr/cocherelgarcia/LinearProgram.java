@@ -149,7 +149,7 @@ public class LinearProgram {
         boolean optimal = findPivot();
 
         if(optimal)
-            System.out.println("Solution trouvée ou Impossible à résoudre !");
+            System.out.println("Solution trouvée ou Impossible à résoudre");
         else
             System.out.println("Nouveau pivot en ligne: " + pivotRow + " et colonne: " + pivotCol + " de valeur: " + matrix.get(pivotRow).get(pivotCol));
     }
