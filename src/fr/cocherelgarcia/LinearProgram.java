@@ -2,6 +2,7 @@ package fr.cocherelgarcia;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.Vector;
 
 public class LinearProgram {
@@ -56,6 +57,16 @@ public class LinearProgram {
         matrix = new Vector<>();
     }
 
+    public LinearProgram(int n, int m, Float[]... lines){
+        this(n, m);
+        int i = 0;
+        for(Float[] line : lines){
+            matrix.add(new Vector<>());
+            matrix.get(i).addAll(Arrays.asList(line));
+            i++;
+        }
+    }
+
     /**
      * Génération du programme canonique aléatoire en fonction du nombre de variables décision
      * ainsi que du nombre de contraintes
@@ -71,7 +82,7 @@ public class LinearProgram {
                 matrix.get(i).add((float) Utils.getRandomBetween(minRand, maxRand));
 
                 // Si on est en fin de ligne on ajoute la contrainte d'égalité / inégalité
-                if(j == n-1 && i > 0)
+                if(j == n-1 && i != matrix.size()-1)
                     matrix.get(i).add((float) Utils.getRandomBetween(0, maxRand));
             }
         }
@@ -82,25 +93,21 @@ public class LinearProgram {
      */
     public void toStandard(){
         // Doublement du nombre de variables
-        n = n * 2;
-        for(int i = 1; i <= m; i++){
-            float  equality = matrix.get(i).lastElement(); // Sauvegarde du dernier élément qui est l'égalité pour pouvoir ajouter les variables d'écart entre deux
-            matrix.get(i).remove(equality);
+        n = n + m;
+        for(int i = 0; i <= m; i++){
+            float equality = matrix.get(i).lastElement(); // Sauvegarde du dernier élément qui est l'égalité pour pouvoir ajouter les variables d'écart entre deux
+            if(i != matrix.size()-1)
+                matrix.get(i).remove(equality);
 
-            for(int j = n/2; j < n; j++){
+            for(int j = n/2; j < n-1; j++){
                 // Si on est à la première ligne (fonction maximisation) pas d'ajout de variable d'écart, seulement pour les contraintes
-                if(j == (n/2) + i-1)
+                if(j == (n/2) + i && i != matrix.size()-1)
                     matrix.get(i).add(1.0f); // Ajout variable d'écart
                 else
                     matrix.get(i).add(0.0f); // Sinon ajout d'une variable avec "0"
             }
-
-            matrix.get(i).add(equality);// On remet en place l'égalité si on est sur une contrainte
-        }
-
-        // On ajoute ces variables d'écart à notre fonction de maximisation (1ère ligne)
-        for(int i = n/2; i < n; i++){
-            matrix.get(0).add(0.0f);
+            if(i != matrix.size()-1)
+                matrix.get(i).add(equality);// On remet en place l'égalité si on est sur une contrainte
         }
     }
 
@@ -114,8 +121,8 @@ public class LinearProgram {
 
         // Recherche de la colonne de la fonction Z avec la plus grande valeur
         for(int i = 0; i < n; i++){
-            if(matrix.get(0).get(i) > bestValue){
-                bestValue = matrix.get(0).get(i);
+            if(matrix.lastElement().get(i) > bestValue){
+                bestValue = matrix.lastElement().get(i);
                 pivotCol = i;
             }
         }
@@ -125,7 +132,7 @@ public class LinearProgram {
 
         bestValue = Float.MAX_VALUE;
         // Recherche du plus petit ratio
-        for(int i = 1; i <= m; i++){
+        for(int i = 0; i < m; i++){
             try{
                 float ratio = matrix.get(i).lastElement() / matrix.get(i).get(pivotCol);
                 if(ratio > 0 && bestValue > ratio){
@@ -142,16 +149,63 @@ public class LinearProgram {
     }
 
     /**
+     * Création du nouveau tableau
+     */
+    private void buildNewMatrix(){
+        Vector<Vector<Float>> tmpMatrix = Utils.getMatrixCopy(matrix);
+        float pivot = tmpMatrix.get(pivotRow).get(pivotCol);
+
+        // Remplissage de la colonne du pivot par 0 et 1 à la place du pivot
+        for(int i = 0; i <= m; i++){
+            if(i != pivotRow)
+                tmpMatrix.get(i).set(pivotCol, 0.0f);
+            else
+                tmpMatrix.get(i).set(pivotCol, 1.0f);
+        }
+
+        // Division de la ligne du pivot par le pivot
+        for(int i = 0; i < n; i++){
+            float newValue = tmpMatrix.get(pivotRow).get(i) / pivot;
+            tmpMatrix.get(pivotRow).set(i, newValue);
+        }
+
+        for(int i = 0; i <= m; i++){
+
+            // Si ligne du pivot on passe à la suivante
+            if(i == pivotRow)
+                continue;
+
+            for(int j = 0; j <= n; j++){
+
+                // Si colonne du pivot on passe à la suivante ou "b" de ligne Z
+                if(j == pivotCol || (j == n && i == matrix.size()-1))
+                    continue;
+                else{
+                    float newValue = tmpMatrix.get(i).get(j) - (matrix.get(pivotRow).get(j) * matrix.get(i).get(pivotCol));
+                    tmpMatrix.get(i).set(j, newValue);
+                }
+
+            }
+        }
+        matrix = tmpMatrix;
+    }
+
+    /**
      * Résolution du programme
      */
     public void solve(){
-        // Etape 1: recherche du pivot
-        boolean optimal = findPivot();
+        boolean optimal = false;
 
-        if(optimal)
-            System.out.println("Solution trouvée ou Impossible à résoudre");
-        else
-            System.out.println("Nouveau pivot en ligne: " + pivotRow + " et colonne: " + pivotCol + " de valeur: " + matrix.get(pivotRow).get(pivotCol));
+        while(!optimal){
+            // Etape 1: recherche du pivot
+            optimal = findPivot();
+
+            // Etape 2 : Construction nouveau tableau
+            if(!optimal)
+                buildNewMatrix();
+        }
+        System.out.println("Solution: ");
+        print();
     }
 
     /**
@@ -163,7 +217,7 @@ public class LinearProgram {
         System.out.println("--------------------------------------------------------");
         for(int i = 0; i <= m; i++){
             // Affichage ligne de maximisation
-            if(i == 0)
+            if(i == matrix.size()-1)
                 System.out.print("Max z=");
 
             for(int j = 0; j < n; j++){
@@ -178,7 +232,7 @@ public class LinearProgram {
                     System.out.printf(format, " ");
 
                 // Si dernière colonne on affiche le "="
-                if(j == n-1 && i > 0){
+                if(j == n-1 && i != matrix.size()-1){
                     System.out.printf(format, "= " + nf.format(matrix.get(i).get(j+1)));
                 }
             }
@@ -186,4 +240,6 @@ public class LinearProgram {
         }
         System.out.println("--------------------------------------------------------");
     }
+
+
 }
