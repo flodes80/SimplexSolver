@@ -3,6 +3,8 @@ package fr.cocherelgarcia;
 import java.util.Random;
 import java.util.Vector;
 
+import static java.lang.Math.abs;
+
 public class Utils {
 
     /**
@@ -32,5 +34,16 @@ public class Utils {
                 returnMatrix.get(i).add(argMatrix.get(i).get(j));
         }
         return returnMatrix;
+    }
+
+    /**
+     * Arrondi à l'entier supérieur une division
+     * @param num numérateur
+     * @param divisor divisieur
+     * @return entier supérieur de la division
+     */
+    public static int roundUp(int num, int divisor) {
+        int sign = (num > 0 ? 1 : -1) * (divisor > 0 ? 1 : -1);
+        return sign * (abs(num) + abs(divisor) - 1) / abs(divisor);
     }
 }
