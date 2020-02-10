@@ -22,6 +22,20 @@ public class Utils {
     }
 
     /**
+     * Renvoi un nombre réel entre deux bornes (inclusives)
+     * @param min Borne inférieure
+     * @param max Borne supérieure
+     * @return Nombre aléatoire entre min et max
+     */
+    public static float getRandomBetween(float min, float max) {
+        if (min >= max) {
+            throw new IllegalArgumentException("max must be greater than min");
+        }
+        Random r = new Random();
+        return r.nextFloat() * (max - min) + min;
+    }
+
+    /**
      * Retourne une copie profonde du vecteur de vecteur de float passé en argument
      * @param argMatrix Matrice à copier
      * @return une copie de la matrice argMatrix

@@ -4,19 +4,38 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Vector;
-import java.util.stream.IntStream;
 
 public class LinearProgram {
 
     /**
-     * Borne inférieure pour la génération d'une variable de décision dans les contraintes
+     * Borne inférieure pour la génération du vecteur profit "c"
      */
-    private final static int minRand = -20;
+    private final static float minC = 0.0f;
 
     /**
-     * Borne supérieure pour la génération d'une variable de décision dans les contraintes
+     * Borne supérieure pour la génération du vecteur profit "c"
      */
-    private final static int maxRand = 20;
+    private final static float maxC = 500.0f;
+
+    /**
+     * Borne inférieure pour la génération de la matrice "A"
+     */
+    private final static float minA = 0.0f;
+
+    /**
+     * Borne supérieure pour la génération de la matrice "A"
+     */
+    private final static float maxA = 100.0f;
+
+    /**
+     * Borne inférieure pour la génération des contraintes "b"
+     */
+    private final static float minB = 25.0f;
+
+    /**
+     * Borne supérieure pour la génération des contraintes "b"
+     */
+    private final static float maxB = 250.0f;
 
     /**
      * Nombre de de variables de décision
@@ -63,7 +82,7 @@ public class LinearProgram {
     /**
      * Debug mode
      */
-    private boolean debug = true;
+    private boolean debug = false;
 
     private enum End{
         NOT_OPTIMAL,
@@ -72,19 +91,27 @@ public class LinearProgram {
     }
 
     /**
-     *
+     *  Génération d'un programme aléatoire
      * @param n Nombre de variables de décision
      * @param m Nombre de contraintes
      */
     public LinearProgram(int n, int m){
-        if(m > n)
+        if(m > n) {
             throw new ExceptionInInitializerError("Le nombre de contrainte ne peux pas être ne peux pas être supérieur au nombre de variables !");
+        }
         this.n = n;
         this.m = m;
         this.matrix = new Vector<>();
         generateProgram();
     }
 
+    /**
+     * Génération d'un programme à partir du nombre de varaibles, du nombre de contraintes et leur définition
+     * La fonction de maximisation doit être déclarée en dernière
+     * @param n Nombre de variables de décision
+     * @param m Nombre de contraintes
+     * @param lines Définitions des contraintes avec leurs variables
+     */
     public LinearProgram(int n, int m, Float[]... lines){
         if(m > n)
             throw new ExceptionInInitializerError("Le nombre de contrainte ne peux pas être ne peux pas être supérieur au nombre de variables !");
@@ -108,12 +135,14 @@ public class LinearProgram {
             // Ajout d'une contrainte
             matrix.add(new Vector<>());
             for(int j = 0; j < n; j++){
-                // Ajout de coefficients aléatoires aux variables de décisions
-                matrix.get(i).add((float) Utils.getRandomBetween(minRand, maxRand));
+                if(i == m)
+                    matrix.get(i).add(Utils.getRandomBetween(minC, maxC));  // Ajout de coefficients aléatoires à la fonction de maximisation
+                else
+                    matrix.get(i).add(Utils.getRandomBetween(minA, maxA)); // Ajout de coefficients aléatoires aux variables de décisions
 
                 // Si on est en fin de ligne on ajoute la contrainte d'égalité / inégalité
                 if(j == n-1 && i != m )
-                    matrix.get(i).add((float) Utils.getRandomBetween(0, maxRand));
+                    matrix.get(i).add(Utils.getRandomBetween(minB, maxB));
             }
         }
     }
@@ -121,7 +150,7 @@ public class LinearProgram {
     /**
      * Convertit le programme canonique en programme standard
      */
-    public void toStandard(){
+    private void toStandard(){
         // Doublement du nombre de variables
         n = n + m;
         // Création et initialisation de la base
@@ -248,10 +277,11 @@ public class LinearProgram {
     /**
      * Résolution du programme
      */
-    public void solve(){
+    public boolean solve(){
         End end = End.NOT_OPTIMAL;
         iter = 0;
-
+        if(!isStandard)
+            toStandard();
         while(end != End.NOT_BOUNDED && end != End.OPTIMAL){
             if(debug)
                 print();
@@ -265,7 +295,9 @@ public class LinearProgram {
                 iter++;
             }
         }
-        printSolution(end);
+        if(debug)
+            printSolution(end);
+        return end == End.OPTIMAL;
     }
 
     /**
